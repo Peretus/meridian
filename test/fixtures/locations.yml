@@ -1,0 +1,14 @@
+valid_location:
+  coordinates: <%= ActiveRecord::Base.connection.execute("SELECT ST_GeomFromText('POINT(-122.47 37.80)', 4326)").first['st_geomfromtext'] %>
+  source: "test_source"
+  fetched_at: <%= Time.current %>
+
+one:
+  source: test_source
+  coordinates: <%= ActiveRecord::Base.connection.execute("SELECT ST_GeomFromText('POINT(-122.4194 37.7749)', 4326)").first['st_geomfromtext'] %>
+  fetched_at: <%= Time.current %>
+
+two:
+  source: test_source
+  coordinates: <%= ActiveRecord::Base.connection.execute("SELECT ST_GeomFromText('POINT(-0.1276 51.5074)', 4326)").first['st_geomfromtext'] %>
+  fetched_at: <%= Time.current %>
