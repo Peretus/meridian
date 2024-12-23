@@ -136,4 +136,65 @@ class GeojsonImportTest < ActiveSupport::TestCase
       import.create_locations
     end
   end
+
+  test "should handle duplicate points idempotently" do
+    import = GeojsonImport.new(display_name: "Test Import")
+    file_content = {
+      "type": "FeatureCollection",
+      "features": [{
+        "type": "Feature",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [-122.4194, 37.7749]
+        },
+        "properties": {}
+      }]
+    }.to_json
+
+    import.file.attach(
+      io: StringIO.new(file_content),
+      filename: "coordinates.geojson",
+      content_type: "application/geo+json"
+    )
+    import.save!
+    
+    # First import should create location
+    assert_difference 'Location.count', 1 do
+      import.create_locations
+    end
+    
+    # Second import should not create duplicate
+    assert_no_difference 'Location.count' do
+      import.create_locations
+    end
+  end
+
+  test "should handle linestring features" do
+    import = GeojsonImport.new(display_name: "Test LineString")
+    file_content = {
+      "type": "FeatureCollection",
+      "features": [{
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [-122.4194, 37.7749],
+            [-122.4200, 37.7750]
+          ]
+        },
+        "properties": {}
+      }]
+    }.to_json
+
+    import.file.attach(
+      io: StringIO.new(file_content),
+      filename: "linestring.geojson",
+      content_type: "application/geo+json"
+    )
+    import.save!
+    
+    assert_difference 'Location.count', 2 do
+      import.create_locations
+    end
+  end
 end 

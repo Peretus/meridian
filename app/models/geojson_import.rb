@@ -22,11 +22,25 @@ class GeojsonImport < ApplicationRecord
   end
 
   def create_locations
-    coordinates_from_file.each do |coords|
-      Location.create!(
-        coordinates: Location.create_point(coords[0], coords[1]),
-        source: 'geojson upload'
-      )
+    return [] unless file.attached?
+
+    content = file.download
+    parsed_json = JSON.parse(content)
+    
+    unless parsed_json["type"] == "FeatureCollection" && parsed_json["features"].is_a?(Array)
+      raise JSON::ParserError, "Invalid GeoJSON format: must be a FeatureCollection with features"
+    end
+
+    parsed_json["features"].each do |feature|
+      case feature["geometry"]["type"]
+      when "Point"
+        coords = feature["geometry"]["coordinates"]
+        create_point_if_not_exists(coords[0], coords[1])
+      when "LineString"
+        feature["geometry"]["coordinates"].each do |coords|
+          create_point_if_not_exists(coords[0], coords[1])
+        end
+      end
     end
   end
 
@@ -34,5 +48,18 @@ class GeojsonImport < ApplicationRecord
 
   def set_name
     self.name ||= "import_#{Time.current.to_i}"
+  end
+
+  def create_point_if_not_exists(longitude, latitude)
+    point = Location.create_point(longitude, latitude)
+    
+    # Try to create, skip if similar point exists
+    Location.find_or_create_by!(
+      coordinates: point,
+      source: 'geojson upload'
+    )
+  rescue ActiveRecord::RecordNotUnique
+    # Skip if exact duplicate
+    nil
   end
 end 
