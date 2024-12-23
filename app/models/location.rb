@@ -1,19 +1,7 @@
 class Location < ApplicationRecord
   validates :source, presence: true
   validates :coordinates, presence: true
-
-  # Add logging for debugging
-  after_initialize do |location|
-    Rails.logger.debug "Location initialized with coordinates: #{coordinates.inspect}"
-  end
-
-  before_validation do |location|
-    Rails.logger.debug "Location being validated with coordinates: #{coordinates.inspect}"
-  end
-
-  before_save do |location|
-    Rails.logger.debug "Location being saved with coordinates: #{coordinates.inspect}"
-  end
+  validate :validate_coordinate_ranges
 
   # Helper method to create a point from lon/lat
   def self.create_point(longitude, latitude)
@@ -27,5 +15,19 @@ class Location < ApplicationRecord
 
   def latitude
     coordinates&.y
+  end
+
+  private
+
+  def validate_coordinate_ranges
+    return if coordinates.blank?
+
+    if longitude < -180 || longitude > 180
+      errors.add(:coordinates, "longitude must be between -180 and 180")
+    end
+
+    if latitude < -90 || latitude > 90
+      errors.add(:coordinates, "latitude must be between -90 and 90")
+    end
   end
 end 

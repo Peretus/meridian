@@ -55,4 +55,30 @@ class LocationTest < ActiveSupport::TestCase
     assert_equal longitude, extracted_longitude
     assert_equal latitude, extracted_latitude
   end
+
+  test "should not save location with invalid longitude" do
+    location = Location.new(
+      coordinates: Location.create_point(-181, 37.80),
+      source: "test_source"
+    )
+    assert_not location.valid?
+    assert_includes location.errors[:coordinates], "longitude must be between -180 and 180"
+
+    location.coordinates = Location.create_point(181, 37.80)
+    assert_not location.valid?
+    assert_includes location.errors[:coordinates], "longitude must be between -180 and 180"
+  end
+
+  test "should not save location with invalid latitude" do
+    location = Location.new(
+      coordinates: Location.create_point(-122.47, 91),
+      source: "test_source"
+    )
+    assert_not location.valid?
+    assert_includes location.errors[:coordinates], "latitude must be between -90 and 90"
+
+    location.coordinates = Location.create_point(-122.47, -91)
+    assert_not location.valid?
+    assert_includes location.errors[:coordinates], "latitude must be between -90 and 90"
+  end
 end
