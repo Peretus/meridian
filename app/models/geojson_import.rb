@@ -88,7 +88,6 @@ class GeojsonImport < ApplicationRecord
       ratio = i.to_f / steps
       interpolated_lon = start_point[0] + (lon_diff * ratio)
       interpolated_lat = start_point[1] + (lat_diff * ratio)
-      Rails.logger.debug "Interpolated point: [#{interpolated_lon}, #{interpolated_lat}]"
       points << [interpolated_lon, interpolated_lat]
     end
     
