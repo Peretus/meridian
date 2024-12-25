@@ -9,10 +9,18 @@ class GeojsonImport < ApplicationRecord
     max_lat: 49.384358    # Northernmost point
   }.freeze
 
+  # Constants for image capture and interpolation
+  METERS_PER_PIXEL_AT_ZOOM_16 = 2.4
+  IMAGE_SIZE_PIXELS = 224
+  OVERLAP_PERCENTAGE = 0.10
+  METERS_PER_DEGREE = 111319.9  # 1 degree = 111,319.9 meters at equator
+
   has_one_attached :file
 
   validates :name, presence: true
   validates :display_name, presence: true
+  
+  enum status: { pending: 0, processing: 1, completed: 2, interrupted: 3, failed: 4 }
 
   before_validation :set_name, on: :create
 
@@ -34,6 +42,7 @@ class GeojsonImport < ApplicationRecord
   def create_locations
     return [] unless file.attached?
 
+    update(status: :processing)
     content = file.download
     parsed_json = JSON.parse(content)
     
@@ -41,7 +50,17 @@ class GeojsonImport < ApplicationRecord
       raise JSON::ParserError, "Invalid GeoJSON format: must be a FeatureCollection with features"
     end
 
+    total_features = parsed_json["features"].size
+    processed_features = 0
+
     parsed_json["features"].each do |feature|
+      # Yield progress if block given
+      if block_given?
+        progress = (processed_features.to_f / total_features * 100).round
+        yield(progress)
+      end
+      processed_features += 1
+
       # Skip features that are open water or great lakes
       next if SKIPPED_WATER_CLASSES.include?(feature.dig("properties", "GEO_CLASS"))
 
@@ -71,6 +90,11 @@ class GeojsonImport < ApplicationRecord
         end
       end
     end
+
+    update(status: :completed)
+  rescue StandardError => e
+    update(status: :failed)
+    raise e
   end
 
   private
@@ -97,19 +121,39 @@ class GeojsonImport < ApplicationRecord
     nil
   end
 
-  def interpolate_points(start_point, end_point, steps = 10)
+  def interpolate_points(start_point, end_point, steps = nil)
+    # Constants for a 224x224 image at zoom level 16 with 10% overlap
+    meters_between_points = IMAGE_SIZE_PIXELS * METERS_PER_PIXEL_AT_ZOOM_16 * (1 - OVERLAP_PERCENTAGE)
+    
+    # Convert points to meters, accounting for latitude in longitude conversion
+    avg_lat = (start_point[1] + end_point[1]) / 2
+    lon_scale = Math.cos(avg_lat * Math::PI / 180)  # Scale longitude by latitude
+    
+    start_x = start_point[0] * METERS_PER_DEGREE * lon_scale
+    start_y = start_point[1] * METERS_PER_DEGREE
+    end_x = end_point[0] * METERS_PER_DEGREE * lon_scale
+    end_y = end_point[1] * METERS_PER_DEGREE
+    
+    # Calculate total distance using both x and y
+    dx = end_x - start_x
+    dy = end_y - start_y
+    total_distance = Math.sqrt(dx * dx + dy * dy)
+    
+    # Calculate number of points needed based on actual distance
+    additional_points = [(total_distance / meters_between_points).ceil - 1, 0].max
+    
     points = []
+    return points if additional_points == 0
     
-    # Calculate the difference between start and end coordinates
-    lon_diff = end_point[0] - start_point[0]
-    lat_diff = end_point[1] - start_point[1]
-    
-    # Create intermediate points
-    (1...steps).each do |i|
-      ratio = i.to_f / steps
-      interpolated_lon = start_point[0] + (lon_diff * ratio)
-      interpolated_lat = start_point[1] + (lat_diff * ratio)
-      points << [interpolated_lon, interpolated_lat]
+    # Create evenly spaced points along both dimensions
+    (1..additional_points).each do |i|
+      ratio = i.to_f / (additional_points + 1)
+      
+      # Interpolate both longitude and latitude
+      lon = start_point[0] + (end_point[0] - start_point[0]) * ratio
+      lat = start_point[1] + (end_point[1] - start_point[1]) * ratio
+      
+      points << [lon, lat]
     end
     
     points

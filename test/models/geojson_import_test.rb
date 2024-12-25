@@ -178,8 +178,8 @@ class GeojsonImportTest < ActiveSupport::TestCase
         "geometry": {
           "type": "LineString",
           "coordinates": [
-            [-122.4194, 37.7749],
-            [-122.4200, 37.7750]
+            [-122.4194, 37.7749],  # Start in San Francisco
+            [-122.4294, 37.7849]   # About 1.2km northwest
           ]
         },
         "properties": {}
@@ -193,12 +193,14 @@ class GeojsonImportTest < ActiveSupport::TestCase
     )
     import.save!
     
-    assert_difference 'Location.count', 11 do  # 2 original points + 9 interpolated points
+    # With ~484m between points (accounting for 10% overlap), we expect:
+    # 2 original points + 2 interpolated points ≈ 1.2km coverage
+    assert_difference 'Location.count', 4 do
       import.create_locations
     end
   end
 
-  test "should interpolate points between linestring coordinates" do
+  test "should interpolate points based on image coverage distance" do
     # Clear existing locations to ensure clean state
     Location.delete_all
     
@@ -211,7 +213,7 @@ class GeojsonImportTest < ActiveSupport::TestCase
           "type": "LineString",
           "coordinates": [
             [-122.4194, 37.7749],  # San Francisco start point
-            [-122.4194, 37.7800]   # A point slightly north, same longitude
+            [-122.4194, 37.7950]   # About 2.2km north, same longitude
           ]
         },
         "properties": {}
@@ -225,16 +227,20 @@ class GeojsonImportTest < ActiveSupport::TestCase
     )
     import.save!
     
-    # Should create original points plus interpolated points
-    assert_difference 'Location.count', 11 do  # 2 original points + 9 interpolated points
+    # With ~484m between points (accounting for 10% overlap):
+    # Distance is 2.2km = 2200m
+    # Number of segments needed = ceil(2200/483.84) = 5
+    # Number of interpolated points = 5 - 1 = 4
+    # Total points = 2 endpoints + 4 interpolated = 6
+    assert_difference 'Location.count', 6 do
       import.create_locations
     end
     
     # Verify points are between the start and end coordinates
     locations = Location.order(:created_at)
     locations.each do |loc|
-      assert_equal -122.4194, loc.longitude, "Longitude #{loc.longitude} should be -122.4194"
-      assert loc.latitude.between?(37.7749, 37.7800), "Latitude #{loc.latitude} not between 37.7749 and 37.7800"
+      assert_equal -122.4194, loc.longitude.round(4), "Longitude #{loc.longitude} should be -122.4194"
+      assert loc.latitude.between?(37.7749, 37.7950), "Latitude #{loc.latitude} not between 37.7749 and 37.7950"
     end
   end
 end 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_12_23_021618) do
+ActiveRecord::Schema[7.1].define(version: 2024_12_25_232613) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
   enable_extension "postgis"
@@ -48,6 +48,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_12_23_021618) do
     t.string "display_name", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "status"
   end
 
   create_table "locations", force: :cascade do |t|
