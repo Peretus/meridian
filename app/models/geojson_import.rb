@@ -1,4 +1,6 @@
 class GeojsonImport < ApplicationRecord
+  SKIPPED_WATER_CLASSES = ['O', 'G'].freeze  # O = open water, G = great lakes
+  
   has_one_attached :file
 
   validates :name, presence: true
@@ -32,6 +34,9 @@ class GeojsonImport < ApplicationRecord
     end
 
     parsed_json["features"].each do |feature|
+      # Skip features that are open water or great lakes
+      next if SKIPPED_WATER_CLASSES.include?(feature.dig("properties", "GEO_CLASS"))
+
       case feature["geometry"]["type"]
       when "Point"
         coords = feature["geometry"]["coordinates"]
