@@ -33,19 +33,22 @@ class Location < ApplicationRecord
     }
   end
 
-  # Helper methods to access coordinates
+  # Get the longitude (x coordinate)
   def longitude
-    coordinates&.x
+    return nil unless coordinates
+    coordinates.x
   end
 
+  # Get the latitude (y coordinate)
   def latitude
-    coordinates&.y
+    return nil unless coordinates
+    coordinates.y
   end
 
   private
 
   def validate_coordinate_ranges
-    return if coordinates.blank?
+    return unless coordinates
 
     if longitude < -180 || longitude > 180
       errors.add(:coordinates, "longitude must be between -180 and 180")

@@ -1,2 +1,3 @@
 basic_import:
   name: "Test Import"
+  display_name: "Test Import Display Name"
