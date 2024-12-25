@@ -8,6 +8,31 @@ class Location < ApplicationRecord
     "POINT(#{longitude} #{latitude})"
   end
 
+  # Export all locations as GeoJSON
+  def self.to_geojson
+    {
+      type: "FeatureCollection",
+      features: all.map(&:to_geojson_feature)
+    }.to_json
+  end
+
+  # Export a single location as a GeoJSON feature
+  def to_geojson_feature
+    {
+      type: "Feature",
+      geometry: {
+        type: "Point",
+        coordinates: [longitude, latitude]
+      },
+      properties: {
+        id: id,
+        source: source,
+        created_at: created_at,
+        fetched_at: fetched_at
+      }
+    }
+  end
+
   # Helper methods to access coordinates
   def longitude
     coordinates&.x

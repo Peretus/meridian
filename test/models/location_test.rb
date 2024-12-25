@@ -81,4 +81,30 @@ class LocationTest < ActiveSupport::TestCase
     assert_not location.valid?
     assert_includes location.errors[:coordinates], "latitude must be between -90 and 90"
   end
+
+  test "should export to geojson" do
+    # Clear existing locations
+    Location.delete_all
+    
+    # Create a test location
+    location = Location.create!(
+      coordinates: Location.create_point(-122.4194, 37.7749),
+      source: "test_source",
+      fetched_at: Time.current
+    )
+    
+    # Export to GeoJSON
+    geojson = JSON.parse(Location.to_geojson)
+    
+    # Verify GeoJSON structure
+    assert_equal "FeatureCollection", geojson["type"]
+    assert_equal 1, geojson["features"].length
+    
+    feature = geojson["features"].first
+    assert_equal "Feature", feature["type"]
+    assert_equal "Point", feature["geometry"]["type"]
+    assert_equal [-122.4194, 37.7749], feature["geometry"]["coordinates"]
+    assert_equal "test_source", feature["properties"]["source"]
+    assert_equal location.id, feature["properties"]["id"]
+  end
 end
