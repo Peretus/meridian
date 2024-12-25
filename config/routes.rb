@@ -9,5 +9,7 @@ Rails.application.routes.draw do
   # root "posts#index"
 
   resources :geojson_imports, only: [:index, :new, :create]
-  resources :locations, only: [:index]
+  resources :locations, only: [:index] do
+    get 'florida', on: :collection
+  end
 end
