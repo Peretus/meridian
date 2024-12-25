@@ -2,6 +2,7 @@ class Location < ApplicationRecord
   validates :source, presence: true
   validates :coordinates, presence: true
   validate :validate_coordinate_ranges
+  has_one_attached :satellite_image
 
   FLORIDA_BOUNDS = {
     min_lat: 24.3959,
@@ -61,6 +62,28 @@ class Location < ApplicationRecord
   def latitude
     return nil unless coordinates
     coordinates.y
+  end
+
+  def fetch_satellite_image
+    return if satellite_image.attached?
+
+    begin
+      image_data = GoogleMapsService.new.fetch_static_map(
+        latitude: latitude,
+        longitude: longitude
+      )
+      
+      satellite_image.attach(
+        io: StringIO.new(image_data),
+        filename: "satellite_#{id}.jpg",
+        content_type: "image/jpeg"
+      )
+
+      update(fetched_at: Time.current)
+    rescue GoogleMapsService::Error => e
+      Rails.logger.error "Failed to fetch satellite image for location #{id}: #{e.message}"
+      false
+    end
   end
 
   private
