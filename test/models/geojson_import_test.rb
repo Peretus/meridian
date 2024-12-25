@@ -110,7 +110,7 @@ class GeojsonImportTest < ActiveSupport::TestCase
           "type": "Feature",
           "geometry": {
             "type": "Point",
-            "coordinates": [-122.4194, 37.7749]
+            "coordinates": [-122.4194, 37.7749]  # San Francisco
           },
           "properties": {}
         },
@@ -118,7 +118,7 @@ class GeojsonImportTest < ActiveSupport::TestCase
           "type": "Feature",
           "geometry": {
             "type": "Point",
-            "coordinates": [-0.1276, 51.5074]
+            "coordinates": [-73.9352, 40.7306]  # New York
           },
           "properties": {}
         }

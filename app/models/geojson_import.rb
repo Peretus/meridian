@@ -1,6 +1,14 @@
 class GeojsonImport < ApplicationRecord
   SKIPPED_WATER_CLASSES = ['O', 'G'].freeze  # O = open water, G = great lakes
   
+  # Rough bounding box for contiguous USA
+  USA_BOUNDS = {
+    min_lon: -124.848974, # Westernmost point
+    max_lon: -66.885444,  # Easternmost point
+    min_lat: 24.396308,   # Southernmost point
+    max_lat: 49.384358    # Northernmost point
+  }.freeze
+
   has_one_attached :file
 
   validates :name, presence: true
@@ -40,20 +48,23 @@ class GeojsonImport < ApplicationRecord
       case feature["geometry"]["type"]
       when "Point"
         coords = feature["geometry"]["coordinates"]
-        create_point_if_not_exists(coords[0], coords[1])
+        create_point_if_not_exists(coords[0], coords[1]) if point_in_usa?(coords[0], coords[1])
       when "LineString"
         coordinates = feature["geometry"]["coordinates"]
+        # Filter coordinates to only those within USA
+        usa_coordinates = coordinates.select { |coords| point_in_usa?(coords[0], coords[1]) }
+        
         # Create points for each coordinate
-        coordinates.each do |coords|
+        usa_coordinates.each do |coords|
           create_point_if_not_exists(coords[0], coords[1])
         end
         
-        # Interpolate between consecutive points
-        (0...coordinates.size - 1).each do |i|
-          start_point = coordinates[i]
-          end_point = coordinates[i + 1]
-          interpolated_points = interpolate_points(start_point, end_point)
+        # Interpolate between consecutive points that are both in USA
+        (0...usa_coordinates.size - 1).each do |i|
+          start_point = usa_coordinates[i]
+          end_point = usa_coordinates[i + 1]
           
+          interpolated_points = interpolate_points(start_point, end_point)
           interpolated_points.each do |point|
             create_point_if_not_exists(point[0], point[1])
           end
@@ -66,6 +77,11 @@ class GeojsonImport < ApplicationRecord
 
   def set_name
     self.name ||= "import_#{Time.current.to_i}"
+  end
+
+  def point_in_usa?(longitude, latitude)
+    longitude.between?(USA_BOUNDS[:min_lon], USA_BOUNDS[:max_lon]) &&
+    latitude.between?(USA_BOUNDS[:min_lat], USA_BOUNDS[:max_lat])
   end
 
   def create_point_if_not_exists(longitude, latitude)
