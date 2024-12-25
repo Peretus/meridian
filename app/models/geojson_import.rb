@@ -37,8 +37,21 @@ class GeojsonImport < ApplicationRecord
         coords = feature["geometry"]["coordinates"]
         create_point_if_not_exists(coords[0], coords[1])
       when "LineString"
-        feature["geometry"]["coordinates"].each do |coords|
+        coordinates = feature["geometry"]["coordinates"]
+        # Create points for each coordinate
+        coordinates.each do |coords|
           create_point_if_not_exists(coords[0], coords[1])
+        end
+        
+        # Interpolate between consecutive points
+        (0...coordinates.size - 1).each do |i|
+          start_point = coordinates[i]
+          end_point = coordinates[i + 1]
+          interpolated_points = interpolate_points(start_point, end_point)
+          
+          interpolated_points.each do |point|
+            create_point_if_not_exists(point[0], point[1])
+          end
         end
       end
     end
@@ -61,5 +74,24 @@ class GeojsonImport < ApplicationRecord
   rescue ActiveRecord::RecordNotUnique
     # Skip if exact duplicate
     nil
+  end
+
+  def interpolate_points(start_point, end_point, steps = 10)
+    points = []
+    
+    # Calculate the difference between start and end coordinates
+    lon_diff = end_point[0] - start_point[0]
+    lat_diff = end_point[1] - start_point[1]
+    
+    # Create intermediate points
+    (1...steps).each do |i|
+      ratio = i.to_f / steps
+      interpolated_lon = start_point[0] + (lon_diff * ratio)
+      interpolated_lat = start_point[1] + (lat_diff * ratio)
+      Rails.logger.debug "Interpolated point: [#{interpolated_lon}, #{interpolated_lat}]"
+      points << [interpolated_lon, interpolated_lat]
+    end
+    
+    points
   end
 end 

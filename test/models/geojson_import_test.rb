@@ -193,8 +193,48 @@ class GeojsonImportTest < ActiveSupport::TestCase
     )
     import.save!
     
-    assert_difference 'Location.count', 2 do
+    assert_difference 'Location.count', 11 do  # 2 original points + 9 interpolated points
       import.create_locations
+    end
+  end
+
+  test "should interpolate points between linestring coordinates" do
+    # Clear existing locations to ensure clean state
+    Location.delete_all
+    
+    import = GeojsonImport.new(display_name: "Test Interpolation")
+    file_content = {
+      "type": "FeatureCollection",
+      "features": [{
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [-122.4194, 37.7749],  # San Francisco start point
+            [-122.4194, 37.7800]   # A point slightly north, same longitude
+          ]
+        },
+        "properties": {}
+      }]
+    }.to_json
+
+    import.file.attach(
+      io: StringIO.new(file_content),
+      filename: "interpolation.geojson",
+      content_type: "application/geo+json"
+    )
+    import.save!
+    
+    # Should create original points plus interpolated points
+    assert_difference 'Location.count', 11 do  # 2 original points + 9 interpolated points
+      import.create_locations
+    end
+    
+    # Verify points are between the start and end coordinates
+    locations = Location.order(:created_at)
+    locations.each do |loc|
+      assert_equal -122.4194, loc.longitude, "Longitude #{loc.longitude} should be -122.4194"
+      assert loc.latitude.between?(37.7749, 37.7800), "Latitude #{loc.latitude} not between 37.7749 and 37.7800"
     end
   end
 end 
