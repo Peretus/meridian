@@ -1,5 +1,17 @@
 <%# app/views/locations/bulk_upload.html.erb %>
 <div class="max-w-4xl mx-auto px-4 py-8">
+  <style>
+    .classification-options[data-disabled="true"] {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+    
+    .classification-options[data-disabled="false"] {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  </style>
+  
   <h1 class="text-3xl font-bold text-center mb-8">Bulk Upload Locations</h1>
 
   <%= form_tag process_bulk_upload_locations_path, class: "space-y-6" do %>
@@ -101,6 +113,7 @@
 
     Object.keys(toggles).forEach(type => {
       toggles[type].addEventListener('change', () => updateOptions(type));
+      updateOptions(type);
     });
   });
 <% end %> 

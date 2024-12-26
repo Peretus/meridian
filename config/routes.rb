@@ -11,6 +11,7 @@ Rails.application.routes.draw do
   resources :geojson_imports, only: [:index, :new, :create]
   resources :locations, only: [:index] do
     collection do
+      get :classifications
       get :classify
       patch 'classify/:id', to: 'locations#update_classification'
       get :gallery

@@ -20,6 +20,42 @@ class LocationsController < ApplicationController
                         .per(200)
   end
 
+  def classifications
+    @locations = Location.where.not(fetched_at: nil)
+    
+    # Filter by classifier type and result
+    if params[:classifier].present?
+      case params[:classifier]
+      when 'human'
+        @locations = @locations.where.not(human_classification: nil)
+        if params[:result].present?
+          @locations = @locations.where(human_classification: params[:result] == 'positive' ? 1 : 0)
+        end
+      when 'machine'
+        @locations = @locations.where.not(machine_classification: nil)
+        if params[:result].present?
+          @locations = @locations.where(machine_classification: params[:result] == 'positive' ? 1 : 0)
+        end
+      end
+    end
+
+    # Filter for conflicts
+    if params[:status] == 'conflict'
+      @locations = @locations.where.not(human_classification: nil)
+                           .where.not(machine_classification: nil)
+                           .where('human_classification != machine_classification')
+    end
+
+    @locations = @locations.order(created_at: :desc)
+                          .page(params[:page])
+                          .per(50)
+
+    respond_to do |format|
+      format.html
+      format.json { render json: @locations.to_geojson }
+    end
+  end
+
   def bulk_upload
   end
 
