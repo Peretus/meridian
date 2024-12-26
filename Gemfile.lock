@@ -109,6 +109,9 @@ GEM
     erubi (1.13.1)
     globalid (1.2.1)
       activesupport (>= 6.1)
+    httparty (0.21.0)
+      mini_mime (>= 1.0.0)
+      multi_xml (>= 0.5.2)
     i18n (1.14.6)
       concurrent-ruby (~> 1.0)
     importmap-rails (2.1.0)
@@ -151,6 +154,8 @@ GEM
     mini_portile2 (2.8.8)
     minitest (5.25.4)
     msgpack (1.7.5)
+    multi_xml (0.7.1)
+      bigdecimal (~> 3.1)
     net-imap (0.5.4)
       date
       net-protocol
@@ -329,6 +334,7 @@ DEPENDENCIES
   brakeman
   capybara
   debug
+  httparty (~> 0.21.0)
   importmap-rails
   jbuilder
   kaminari

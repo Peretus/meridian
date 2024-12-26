@@ -69,3 +69,6 @@ gem 'activerecord-import'
 
 # For creating zip files
 gem 'rubyzip'
+
+# For making HTTP requests to the ML service
+gem "httparty", "~> 0.21.0"

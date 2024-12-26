@@ -1,14 +1,13 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-import tensorflow as tf
-import numpy as np
-from PIL import Image, ImageOps
+import os
 import io
+from typing import List
+import numpy as np
+from PIL import Image
+import tensorflow as tf
+from fastapi import FastAPI, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 
-# Disable scientific notation for clarity
-np.set_printoptions(suppress=True)
-
-app = FastAPI(title="Image Classification API")
+app = FastAPI()
 
 # Add CORS middleware
 app.add_middleware(
@@ -20,115 +19,70 @@ app.add_middleware(
 )
 
 # Global variables for model and labels
-interpreter = None
-class_names = []
+model = None
+labels = []
 
-@app.on_event("startup")
-async def load_model():
-    global interpreter, class_names
+def load_model():
+    global model, labels
     try:
-        # Convert model to TFLite format
-        converter = tf.lite.TFLiteConverter.from_keras_model_path("models/classifier/keras_model.h5")
-        tflite_model = converter.convert()
-        
-        # Save the TFLite model
-        with open("models/classifier/model.tflite", "wb") as f:
-            f.write(tflite_model)
-        
-        # Load the TFLite model
-        interpreter = tf.lite.Interpreter(model_path="models/classifier/model.tflite")
-        interpreter.allocate_tensors()
-        
-        # Get input and output details
-        input_details = interpreter.get_input_details()
-        output_details = interpreter.get_output_details()
-        print(f"Input details: {input_details}")
-        print(f"Output details: {output_details}")
+        # Load the model directly using tf.keras
+        model = tf.keras.models.load_model("models/classifier/model.h5")
         
         # Load labels
-        try:
-            class_names = open("models/classifier/labels.txt", "r").readlines()
-            print(f"Labels loaded: {class_names}")
-        except FileNotFoundError:
-            print("Labels file not found, will use numeric indices")
-            class_names = [str(i) for i in range(len(output_details[0]['shape']))]
+        with open("models/classifier/labels.txt", "r") as f:
+            labels = [line.strip() for line in f.readlines()]
             
-        print("Model loaded successfully")
-        
+        print(f"Model loaded successfully. Labels: {labels}")
+        return True
     except Exception as e:
-        print(f"Error loading model: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"Error loading model: {str(e)}")
+        return False
 
-def preprocess_image(image: Image.Image):
-    """Preprocess the image exactly as in the Teachable Machine example."""
-    # Convert to RGB
-    image = image.convert("RGB")
+def preprocess_image(image_data: bytes) -> np.ndarray:
+    # Open image from bytes
+    image = Image.open(io.BytesIO(image_data))
     
-    # Create the array of the right shape
-    data = np.ndarray(shape=(1, 224, 224, 3), dtype=np.float32)
+    # Convert to RGB if needed
+    if image.mode != "RGB":
+        image = image.convert("RGB")
     
-    # Resize and crop from center
-    size = (224, 224)
-    image = ImageOps.fit(image, size, Image.Resampling.LANCZOS)
+    # Resize to match model's expected input
+    image = image.resize((224, 224))
     
-    # Turn the image into a numpy array
-    image_array = np.asarray(image)
+    # Convert to numpy array and normalize
+    img_array = np.array(image)
+    img_array = img_array.astype(np.float32) / 255.0
     
-    # Normalize the image
-    normalized_image_array = (image_array.astype(np.float32) / 127.5) - 1
-    
-    # Load the image into the array
-    data[0] = normalized_image_array
-    
-    return data
+    # Add batch dimension
+    return np.expand_dims(img_array, 0)
+
+@app.on_event("startup")
+async def startup_event():
+    load_model()
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "model_loaded": model is not None}
 
 @app.post("/classify")
 async def classify_image(file: UploadFile = File(...)):
-    if not file:
-        raise HTTPException(status_code=400, detail="No file provided")
+    if not model:
+        return {"error": "Model not loaded"}
     
     try:
         # Read and preprocess the image
         contents = await file.read()
-        image = Image.open(io.BytesIO(contents))
-        processed_image = preprocess_image(image)
+        img_array = preprocess_image(contents)
         
-        # Make prediction using TFLite
-        if interpreter is None:
-            raise HTTPException(status_code=500, detail="Model not loaded")
-        
-        input_details = interpreter.get_input_details()
-        output_details = interpreter.get_output_details()
-        
-        interpreter.set_tensor(input_details[0]['index'], processed_image)
-        interpreter.invoke()
-        prediction = interpreter.get_tensor(output_details[0]['index'])
-        
-        index = np.argmax(prediction[0])
-        class_name = class_names[index]
-        confidence_score = float(prediction[0][index])
-        
-        # Remove the numeric prefix and newline from class name (format: "0 Class Name\n")
-        clean_class_name = class_name.split(" ", 1)[1].strip() if " " in class_name else class_name.strip()
+        # Make prediction
+        predictions = model.predict(img_array)
+        predicted_class_index = np.argmax(predictions[0])
+        confidence = float(predictions[0][predicted_class_index])
         
         return {
-            "class": clean_class_name,
-            "confidence": confidence_score,
-            "all_probabilities": {
-                name.split(" ", 1)[1].strip() if " " in name else name.strip(): float(prob)
-                for name, prob in zip(class_names, prediction[0])
-            },
-            "status": "success"
+            "class": labels[predicted_class_index],
+            "confidence": confidence,
+            "probabilities": {label: float(prob) for label, prob in zip(labels, predictions[0])}
         }
-    
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/health")
-async def health_check():
-    return {
-        "status": "healthy",
-        "model_loaded": interpreter is not None,
-        "num_classes": len(class_names) if class_names else None
-    } 
+        return {"error": str(e)} 

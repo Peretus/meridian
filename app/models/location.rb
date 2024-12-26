@@ -165,6 +165,38 @@ class Location < ApplicationRecord
       .distinct
   end
 
+  # Class method to fetch satellite images in bulk
+  def self.fetch_missing_satellite_images
+    scope = where(fetched_at: nil)
+      .or(where(satellite_image_attachment: nil))
+      .in_florida
+    
+    total = scope.count
+    return if total.zero?
+    
+    puts "Found #{total} locations needing satellite images. Starting fetch..."
+    puts "Rate limited to #{GoogleMapsService::REQUESTS_PER_SECOND} requests per second"
+    
+    success = 0
+    errors = 0
+    
+    scope.find_each.with_index do |location, index|
+      if location.fetch_satellite_image
+        success += 1
+      else
+        errors += 1
+      end
+      
+      # Print progress
+      progress = ((index + 1).to_f / total * 100).round(1)
+      print "\rProgress: #{progress}% (#{index + 1}/#{total} locations processed)"
+    end
+    
+    puts "\n\nFetch complete!"
+    puts "Successfully fetched: #{success}"
+    puts "Errors: #{errors}"
+  end
+
   private
 
   def validate_coordinate_ranges
