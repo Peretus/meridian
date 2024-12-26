@@ -1,0 +1,106 @@
+<%# app/views/locations/bulk_upload.html.erb %>
+<div class="max-w-4xl mx-auto px-4 py-8">
+  <h1 class="text-3xl font-bold text-center mb-8">Bulk Upload Locations</h1>
+
+  <%= form_tag process_bulk_upload_locations_path, class: "space-y-6" do %>
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-2">
+        Enter Latitude/Longitude Points
+      </label>
+      <div class="text-xs text-gray-500 mb-2">
+        Enter one point per line (e.g., "45.123,-122.456") or space-separated points.
+        Commas are optional.
+      </div>
+      <%= text_area_tag :coordinates, nil, 
+          class: "w-full h-48 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500",
+          placeholder: "45.123,-122.456\n45.789,-122.890" %>
+    </div>
+
+    <div class="space-y-4">
+      <!-- Human Classification Section -->
+      <div class="border rounded-lg p-4">
+        <div class="flex items-center mb-4">
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="human_toggle" class="sr-only peer" name="human_enabled">
+            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            <span class="ms-3 text-sm font-medium text-gray-900">Mark as Human Classified</span>
+          </label>
+        </div>
+        
+        <div class="classification-options human-options ml-4" data-disabled="true">
+          <div class="flex items-center space-x-4">
+            <label class="inline-flex items-center">
+              <input type="radio" name="human_classification" value="1" class="form-radio" disabled>
+              <span class="ml-2">Result</span>
+            </label>
+            <label class="inline-flex items-center">
+              <input type="radio" name="human_classification" value="0" class="form-radio" disabled>
+              <span class="ml-2">Not Result</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Machine Classification Section -->
+      <div class="border rounded-lg p-4">
+        <div class="flex items-center mb-4">
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="machine_toggle" class="sr-only peer" name="machine_enabled">
+            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            <span class="ms-3 text-sm font-medium text-gray-900">Mark as Machine Classified</span>
+          </label>
+        </div>
+        
+        <div class="classification-options machine-options ml-4" data-disabled="true">
+          <div class="flex items-center space-x-4">
+            <label class="inline-flex items-center">
+              <input type="radio" name="machine_classification" value="1" class="form-radio" disabled>
+              <span class="ml-2">Result</span>
+            </label>
+            <label class="inline-flex items-center">
+              <input type="radio" name="machine_classification" value="0" class="form-radio" disabled>
+              <span class="ml-2">Not Result</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex justify-center">
+      <%= submit_tag "Upload Points", class: "px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" %>
+    </div>
+  <% end %>
+</div>
+
+<%= javascript_tag nonce: true do %>
+  document.addEventListener('DOMContentLoaded', function() {
+    const toggles = {
+      human: document.getElementById('human_toggle'),
+      machine: document.getElementById('machine_toggle')
+    };
+
+    const options = {
+      human: document.querySelector('.human-options'),
+      machine: document.querySelector('.machine-options')
+    };
+
+    function updateOptions(type) {
+      const isEnabled = toggles[type].checked;
+      const optionsDiv = options[type];
+      const radioButtons = optionsDiv.querySelectorAll('input[type="radio"]');
+      
+      optionsDiv.dataset.disabled = (!isEnabled).toString();
+      radioButtons.forEach(radio => {
+        radio.disabled = !isEnabled;
+      });
+
+      if (!isEnabled) {
+        radioButtons.forEach(radio => radio.checked = false);
+      }
+    }
+
+    Object.keys(toggles).forEach(type => {
+      toggles[type].addEventListener('change', () => updateOptions(type));
+    });
+  });
+<% end %> 

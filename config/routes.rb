@@ -6,13 +6,17 @@ Rails.application.routes.draw do
   get "up" => "rails/health#show", as: :rails_health_check
 
   # Defines the root path route ("/")
-  # root "posts#index"
+  root "locations#index"
 
   resources :geojson_imports, only: [:index, :new, :create]
   resources :locations, only: [:index] do
-    get 'florida', on: :collection
-    get 'gallery', on: :collection
-    get 'classify', on: :collection
-    patch 'classify/:id', on: :collection, action: :update_classification, as: :update_classification
+    collection do
+      get :classify
+      patch 'classify/:id', to: 'locations#update_classification'
+      get :gallery
+      get :florida
+      get :bulk_upload
+      post :process_bulk_upload
+    end
   end
 end

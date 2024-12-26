@@ -63,3 +63,6 @@ gem 'activerecord-postgis-adapter', '~> 9.0'
 
 # Pagination
 gem 'kaminari'
+
+# Add the activerecord-import gem for efficient bulk imports
+gem 'activerecord-import'
