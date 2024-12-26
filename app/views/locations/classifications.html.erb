@@ -8,6 +8,34 @@
     </div>
   </div>
 
+  <%# Training Data Export Section %>
+  <div class="mb-8 p-6 bg-white rounded-lg shadow">
+    <h2 class="text-xl font-semibold mb-4">Training Data Export</h2>
+    <div class="flex items-center justify-between">
+      <div class="text-sm text-gray-600">
+        <p>Human-classified examples available:</p>
+        <ul class="mt-2 space-y-1">
+          <li>• Positive examples: <%= @positive_count %></li>
+          <li>• Negative examples: <%= @negative_count %></li>
+          <li>• Balanced dataset will contain: <%= [@positive_count, @negative_count].min %> examples of each</li>
+        </ul>
+      </div>
+      <% if @can_download_training_data %>
+        <%= link_to download_training_data_locations_path, 
+            class: "px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center gap-2" do %>
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+          </svg>
+          Download Training Data
+        <% end %>
+      <% else %>
+        <div class="text-sm text-gray-500">
+          Need at least 50 examples of each type to download training data
+        </div>
+      <% end %>
+    </div>
+  </div>
+
   <%# Navigation Links %>
   <div class="mb-8 flex flex-wrap gap-4">
     <%= link_to 'Human Positive', 
@@ -40,7 +68,7 @@
               class: "w-full h-full object-cover rounded-lg border-4 #{classification_border_class(location)}",
               alt: "Satellite image for location #{location.id}" %>
           
-          <% if location.human_classification.present? %>
+          <% if location.classified_by_human? %>
             <button onclick="toggleClassification(<%= location.id %>)" 
                     class="absolute top-4 right-4 bg-white hover:bg-gray-100 text-gray-800 font-semibold py-2 px-4 rounded-lg shadow-md opacity-0 group-hover:opacity-100 flex items-center space-x-2 text-xs"
                     style="transition: opacity 0.2s ease-in-out 1s;">
@@ -55,8 +83,10 @@
                style="transition: opacity 0.2s ease-in-out 1s;">
             <div class="text-sm">
               ID: <%= location.id %><br>
-              Human: <%= location.human_classification.nil? ? 'Unclassified' : (location.human_classification == 1 ? 'Positive' : 'Negative') %><br>
-              Machine: <%= location.machine_classification.nil? ? 'Unclassified' : (location.machine_classification == 1 ? 'Positive' : 'Negative') %><br>
+              <% human_class = location.classifications.by_human.latest.first %>
+              <% machine_class = location.classifications.by_machine.latest.first %>
+              Human: <%= human_class ? (human_class.is_result ? 'Positive' : 'Negative') : 'Unclassified' %><br>
+              Machine: <%= machine_class ? (machine_class.is_result ? 'Positive' : 'Negative') : 'Unclassified' %><br>
               Fetched: <%= time_ago_in_words(location.fetched_at) %> ago
             </div>
           </div>

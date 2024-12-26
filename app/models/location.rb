@@ -3,6 +3,8 @@ class Location < ApplicationRecord
   validates :coordinates, presence: true
   validate :validate_coordinate_ranges
   has_one_attached :satellite_image
+  has_many :classifications
+  has_one_attached :image
 
   FLORIDA_BOUNDS = {
     min_lat: 24.3959,
@@ -84,6 +86,56 @@ class Location < ApplicationRecord
       Rails.logger.error "Failed to fetch satellite image for location #{id}: #{e.message}"
       false
     end
+  end
+
+  def latest_classification
+    classifications.latest.first
+  end
+
+  def is_anchorage?
+    latest_human = classifications.by_human.latest.first
+    latest_human&.is_result
+  end
+
+  def classified?
+    classifications.exists?
+  end
+
+  def classified_by_machine?
+    classifications.by_machine.exists?
+  end
+
+  def classified_by_human?
+    classifications.by_human.exists?
+  end
+
+  def classification_result
+    latest_classification&.result
+  end
+
+  # Class methods for finding locations by classification
+  def self.anchorages
+    joins(:classifications)
+      .where(classifications: { classifier_type: 'human', is_result: true })
+      .where("classifications.created_at = (
+        SELECT MAX(c2.created_at)
+        FROM classifications c2
+        WHERE c2.location_id = locations.id
+        AND c2.classifier_type = 'human'
+      )")
+      .distinct
+  end
+
+  def self.not_anchorages
+    joins(:classifications)
+      .where(classifications: { classifier_type: 'human', is_result: false })
+      .where("classifications.created_at = (
+        SELECT MAX(c2.created_at)
+        FROM classifications c2
+        WHERE c2.location_id = locations.id
+        AND c2.classifier_type = 'human'
+      )")
+      .distinct
   end
 
   private

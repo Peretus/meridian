@@ -18,6 +18,7 @@ Rails.application.routes.draw do
       get :florida
       get :bulk_upload
       post :process_bulk_upload
+      get :download_training_data
     end
 
     member do

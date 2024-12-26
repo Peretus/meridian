@@ -22,25 +22,65 @@ class LocationsController < ApplicationController
     
     # Filter by classifier type and result
     if params[:classifier].present?
+      @locations = @locations.joins(:classifications)
       case params[:classifier]
       when 'human'
-        @locations = @locations.where.not(human_classification: nil)
+        @locations = @locations.where(classifications: { classifier_type: 'human' })
         if params[:result].present?
-          @locations = @locations.where(human_classification: params[:result] == 'positive' ? 1 : 0)
+          @locations = @locations.where(classifications: { is_result: params[:result] == 'positive' })
         end
       when 'machine'
-        @locations = @locations.where.not(machine_classification: nil)
+        @locations = @locations.where(classifications: { classifier_type: 'machine' })
         if params[:result].present?
-          @locations = @locations.where(machine_classification: params[:result] == 'positive' ? 1 : 0)
+          @locations = @locations.where(classifications: { is_result: params[:result] == 'positive' })
         end
       end
+      
+      # Get only the latest classification for each location
+      @locations = @locations.where(
+        "classifications.created_at = (
+          SELECT MAX(created_at) 
+          FROM classifications c2 
+          WHERE c2.location_id = locations.id 
+          AND c2.classifier_type = classifications.classifier_type
+        )"
+      )
     end
+
+    # Add counts for training data export
+    @positive_count = Location.joins(:classifications)
+                            .where(classifications: { classifier_type: 'human', is_result: true })
+                            .count
+    @negative_count = Location.joins(:classifications)
+                            .where(classifications: { classifier_type: 'human', is_result: false })
+                            .count
+    @can_download_training_data = [@positive_count, @negative_count].min >= 50
 
     # Filter for conflicts
     if params[:status] == 'conflict'
-      @locations = @locations.where.not(human_classification: nil)
-                           .where.not(machine_classification: nil)
-                           .where('human_classification != machine_classification')
+      @locations = @locations.joins("
+        INNER JOIN (
+          SELECT c1.location_id
+          FROM classifications c1
+          INNER JOIN classifications c2
+          ON c1.location_id = c2.location_id
+          WHERE c1.classifier_type = 'human'
+          AND c2.classifier_type = 'machine'
+          AND c1.is_result != c2.is_result
+          AND c1.created_at = (
+            SELECT MAX(c3.created_at)
+            FROM classifications c3
+            WHERE c3.location_id = c1.location_id
+            AND c3.classifier_type = 'human'
+          )
+          AND c2.created_at = (
+            SELECT MAX(c4.created_at)
+            FROM classifications c4
+            WHERE c4.location_id = c2.location_id
+            AND c4.classifier_type = 'machine'
+          )
+        ) conflicts ON conflicts.location_id = locations.id
+      ")
     end
 
     @locations = @locations.order(created_at: :desc)
@@ -68,23 +108,31 @@ class LocationsController < ApplicationController
     begin
       Location.transaction do
         locations = coordinates.map do |lat, lon|
-          location = Location.new(
+          Location.new(
             coordinates: "POINT(#{lon} #{lat})",
             source: 'bulk_upload'
           )
+        end
 
+        # First create all locations
+        Location.import(locations)
+
+        # Then create classifications if enabled
+        locations.each do |location|
           if params[:human_enabled].present?
-            location.human_classification = params[:human_classification]
+            location.classifications.create!(
+              classifier_type: 'human',
+              is_result: params[:human_classification] == '1'
+            )
           end
 
           if params[:machine_enabled].present?
-            location.machine_classification = params[:machine_classification]
+            location.classifications.create!(
+              classifier_type: 'machine',
+              is_result: params[:machine_classification] == '1'
+            )
           end
-
-          location
         end
-
-        Location.import(locations)
       end
 
       redirect_to locations_path, notice: "Successfully imported #{coordinates.length} location#{coordinates.length == 1 ? '' : 's'}"
@@ -94,8 +142,8 @@ class LocationsController < ApplicationController
   end
 
   def classify
-    @location = Location.where(human_classification: nil)
-                       .where.not(fetched_at: nil)
+    @location = Location.where.not(fetched_at: nil)
+                       .where.not(id: Classification.where(classifier_type: 'human').select(:location_id))
                        .order(created_at: :asc)
                        .first
 
@@ -106,11 +154,15 @@ class LocationsController < ApplicationController
 
   def update_classification
     @location = Location.find(params[:id])
-    classification = params[:classification].to_i
     
-    if @location.update(human_classification: classification)
-      next_location = Location.where(human_classification: nil)
-                             .where.not(fetched_at: nil)
+    classification = @location.classifications.create!(
+      classifier_type: 'human',
+      is_result: params[:classification].to_i == 1
+    )
+    
+    if classification.persisted?
+      next_location = Location.where.not(fetched_at: nil)
+                             .where.not(id: Classification.where(classifier_type: 'human').select(:location_id))
                              .order(created_at: :asc)
                              .first
 
@@ -126,24 +178,53 @@ class LocationsController < ApplicationController
 
   def toggle_classification
     @location = Location.find(params[:id])
+    latest_human = @location.classifications.by_human.latest.first
     
-    if @location.human_classification.nil?
-      render json: { error: 'Cannot toggle machine classifications' }, status: :unprocessable_entity
+    if !latest_human && !@location.classified_by_human?
+      render json: { error: 'No human classification to toggle' }, status: :unprocessable_entity
       return
     end
 
-    # Toggle the classification between 0 and 1
-    @location.human_classification = @location.human_classification == 1 ? 0 : 1
+    # Create a new classification with the opposite result
+    new_classification = @location.classifications.create!(
+      classifier_type: 'human',
+      is_result: latest_human ? !latest_human.is_result : true
+    )
     
-    if @location.save
+    if new_classification.persisted?
       render json: { 
         success: true, 
-        new_classification: @location.human_classification,
+        new_classification: new_classification.is_result,
         message: 'Classification updated successfully'
       }
     else
       render json: { error: 'Failed to update classification' }, status: :unprocessable_entity
     end
+  end
+
+  def download_training_data
+    require 'zip'
+
+    positive = Location.joins(:classifications)
+                      .where(classifications: { classifier_type: 'human', is_result: true })
+                      .where.not(satellite_image_attachment: nil)
+    negative = Location.joins(:classifications)
+                      .where(classifications: { classifier_type: 'human', is_result: false })
+                      .where.not(satellite_image_attachment: nil)
+
+    limit = [positive.count, negative.count].min
+    
+    if limit < 50
+      redirect_to classifications_locations_path, 
+                  alert: 'Not enough classified examples available. Need at least 50 of each type.'
+      return
+    end
+
+    date_str = Time.current.strftime('%Y%m%d')
+    
+    send_data generate_training_zip(positive.limit(limit), negative.limit(limit), date_str),
+              filename: "training_data_#{date_str}.zip",
+              type: 'application/zip'
   end
 
   private
@@ -168,5 +249,21 @@ class LocationsController < ApplicationController
       
       [lat_f, lon_f]
     end.compact
+  end
+
+  def generate_training_zip(positive_locations, negative_locations, date_str)
+    Zip::OutputStream.write_buffer do |zip|
+      # Add positive examples
+      positive_locations.each_with_index do |location, i|
+        zip.put_next_entry "training_data_#{date_str}/positive/#{i+1}.jpg"
+        zip.write location.satellite_image.download
+      end
+      
+      # Add negative examples
+      negative_locations.each_with_index do |location, i|
+        zip.put_next_entry "training_data_#{date_str}/negative/#{i+1}.jpg"
+        zip.write location.satellite_image.download
+      end
+    end.string
   end
 end 

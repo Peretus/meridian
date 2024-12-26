@@ -1,12 +1,13 @@
 module LocationsHelper
   def classification_border_class(location)
-    case location.classification
-    when 'result'
-      'border-emerald-500'  # Green border for results
-    when 'not_result'
-      'border-rose-500'     # Red border for non-results
+    latest_classification = location.latest_classification
+
+    if latest_classification&.classifier_type == 'human'
+      latest_classification.is_result ? 'border-green-500' : 'border-red-500'
+    elsif latest_classification&.classifier_type == 'machine'
+      latest_classification.is_result ? 'border-blue-500' : 'border-yellow-500'
     else
-      'border-slate-700'    # Dark gray border for pending/unclassified
+      'border-gray-300'
     end
   end
 end 

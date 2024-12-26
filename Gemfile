@@ -66,3 +66,6 @@ gem 'kaminari'
 
 # Add the activerecord-import gem for efficient bulk imports
 gem 'activerecord-import'
+
+# For creating zip files
+gem 'rubyzip'

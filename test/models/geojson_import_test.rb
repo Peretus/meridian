@@ -201,10 +201,13 @@ class GeojsonImportTest < ActiveSupport::TestCase
   end
 
   test "should interpolate points based on image coverage distance" do
+    # Delete any existing classifications
+    Classification.delete_all
+    
     # Clear existing locations to ensure clean state
     Location.delete_all
     
-    import = GeojsonImport.new(display_name: "Test Interpolation")
+    import = GeojsonImport.new(name: "test_import", display_name: "Test Interpolation")
     file_content = {
       "type": "FeatureCollection",
       "features": [{

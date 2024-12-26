@@ -1,0 +1,44 @@
+human_positive:
+  location: valid_location
+  classifier_type: human
+  is_result: true
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+human_negative:
+  location: one
+  classifier_type: human
+  is_result: false
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+machine_positive:
+  location: valid_location
+  classifier_type: machine
+  is_result: true
+  model_version: test_model_v1
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+machine_negative:
+  location: one
+  classifier_type: machine
+  is_result: false
+  model_version: test_model_v1
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+conflict_human:
+  location: two
+  classifier_type: human
+  is_result: true
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+conflict_machine:
+  location: two
+  classifier_type: machine
+  is_result: false
+  model_version: test_model_v1
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %> 

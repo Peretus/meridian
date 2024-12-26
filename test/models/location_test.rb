@@ -83,7 +83,8 @@ class LocationTest < ActiveSupport::TestCase
   end
 
   test "should export to geojson" do
-    # Clear existing locations
+    # Clear existing locations and classifications
+    Classification.delete_all
     Location.delete_all
     
     # Create a test location
@@ -106,5 +107,56 @@ class LocationTest < ActiveSupport::TestCase
     assert_equal [-122.4194, 37.7749], feature["geometry"]["coordinates"]
     assert_equal "test_source", feature["properties"]["source"]
     assert_equal location.id, feature["properties"]["id"]
+  end
+
+  test "is_anchorage? returns correct value" do
+    location = locations(:valid_location)
+    assert location.is_anchorage?  # Has human_positive classification
+
+    location = locations(:one)
+    assert_not location.is_anchorage?  # Has human_negative classification
+  end
+
+  test "classified? returns correct value" do
+    location = locations(:valid_location)
+    assert location.classified?
+
+    location = Location.create!(
+      coordinates: Location.create_point(-122.47, 37.80),
+      source: "test_source"
+    )
+    assert_not location.classified?
+  end
+
+  test "classified_by_human? returns correct value" do
+    location = locations(:valid_location)
+    assert location.classified_by_human?
+
+    location = Location.create!(
+      coordinates: Location.create_point(-122.47, 37.80),
+      source: "test_source"
+    )
+    assert_not location.classified_by_human?
+  end
+
+  test "classified_by_machine? returns correct value" do
+    location = locations(:valid_location)
+    assert location.classified_by_machine?
+
+    location = Location.create!(
+      coordinates: Location.create_point(-122.47, 37.80),
+      source: "test_source"
+    )
+    assert_not location.classified_by_machine?
+  end
+
+  test "anchorages scope returns correct locations" do
+    assert_includes Location.anchorages, locations(:valid_location)
+    assert_not_includes Location.anchorages, locations(:one)
+  end
+
+  test "not_anchorages scope returns correct locations" do
+    assert_includes Location.not_anchorages, locations(:one)
+    assert_not_includes Location.not_anchorages, locations(:valid_location)
   end
 end
