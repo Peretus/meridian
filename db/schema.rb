@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_12_25_235757) do
+ActiveRecord::Schema[7.1].define(version: 2024_12_26_001957) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
   enable_extension "postgis"
@@ -58,6 +58,8 @@ ActiveRecord::Schema[7.1].define(version: 2024_12_25_235757) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "classification", default: "pending"
+    t.integer "human_classification"
+    t.integer "machine_classification"
     t.index ["classification"], name: "index_locations_on_classification"
     t.index ["coordinates"], name: "index_locations_on_coordinates", using: :gist
   end

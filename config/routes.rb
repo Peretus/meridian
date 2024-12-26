@@ -12,5 +12,7 @@ Rails.application.routes.draw do
   resources :locations, only: [:index] do
     get 'florida', on: :collection
     get 'gallery', on: :collection
+    get 'classify', on: :collection
+    patch 'classify/:id', on: :collection, action: :update_classification, as: :update_classification
   end
 end

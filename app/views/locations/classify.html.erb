@@ -1,0 +1,57 @@
+<%# app/views/locations/classify.html.erb %>
+<div class="max-w-4xl mx-auto px-4 py-8">
+  <h1 class="text-3xl font-bold text-center mb-8">Is this an anchorage?</h1>
+
+  <% if @location %>
+    <div class="mb-8">
+      <%= image_tag url_for(@location.satellite_image), class: "w-full rounded-lg shadow-lg" if @location.satellite_image.attached? %>
+    </div>
+
+    <div class="flex justify-center space-x-4">
+      <button onclick="classifyLocation(<%= @location.id %>, 1)" class="flex items-center px-4 py-2 bg-green-500 text-white rounded">
+        <svg class="w-5 h-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+        </svg>
+        Yes
+      </button>
+
+      <button onclick="classifyLocation(<%= @location.id %>, 0)" class="flex items-center px-4 py-2 bg-red-500 text-white rounded">
+        <svg class="w-5 h-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+        </svg>
+        No
+      </button>
+    </div>
+
+    <%= javascript_tag nonce: true do %>
+      function classifyLocation(id, classification) {
+        fetch(`/locations/classify/${id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+          },
+          body: JSON.stringify({ classification: classification })
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return response.json();
+        })
+        .then(data => {
+          if (data.redirect_url) {
+            window.location.href = data.redirect_url;
+          }
+          if (data.message) {
+            alert(data.message);
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert('Failed to update classification');
+        });
+      }
+    <% end %>
+  <% end %>
+</div> 
