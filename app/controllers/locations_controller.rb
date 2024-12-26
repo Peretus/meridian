@@ -94,12 +94,15 @@ class LocationsController < ApplicationController
   private
 
   def parse_coordinates(text)
-    # Split by newlines and/or spaces
-    pairs = text.split(/[\n\s]+/)
+    # First split by newlines to get each line
+    lines = text.split(/\n+/).map(&:strip).reject(&:empty?)
     
-    pairs.map do |pair|
-      # Remove any surrounding whitespace and split by comma or space
-      lat, lon = pair.strip.split(/[,\s]+/)
+    lines.map do |line|
+      # Split each line by comma or space
+      parts = line.split(/[,\s]+/).map(&:strip).reject(&:empty?)
+      next unless parts.length == 2
+
+      lat, lon = parts
       next unless lat && lon
 
       # Convert to float and validate

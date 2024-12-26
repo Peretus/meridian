@@ -4,6 +4,7 @@ namespace :locations do
     limit = (args[:limit] || 10).to_i
     
     locations = Location.where(fetched_at: nil)
+                       .order(created_at: :desc)
                        .limit(limit)
     
     puts "Fetching images for #{locations.count} locations..."
