@@ -11,5 +11,6 @@ Rails.application.routes.draw do
   resources :geojson_imports, only: [:index, :new, :create]
   resources :locations, only: [:index] do
     get 'florida', on: :collection
+    get 'gallery', on: :collection
   end
 end

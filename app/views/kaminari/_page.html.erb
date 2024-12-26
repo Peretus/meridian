@@ -1,0 +1,7 @@
+<% if page.current? %>
+  <span class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 bg-gray-100">
+    <%= page %>
+  </span>
+<% else %>
+  <%= link_to page, url, class: "relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50" %>
+<% end %> 

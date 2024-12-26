@@ -60,3 +60,6 @@ end
 
 # Add to existing Gemfile
 gem 'activerecord-postgis-adapter', '~> 9.0'
+
+# Pagination
+gem 'kaminari'
