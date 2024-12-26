@@ -14,10 +14,7 @@ class LocationsController < ApplicationController
   end
 
   def gallery
-    @locations = Location.where.not(fetched_at: nil)
-                        .order(fetched_at: :desc)
-                        .page(params[:page])
-                        .per(200)
+    redirect_to classifications_locations_path, notice: 'The gallery view has been merged into the classifications view'
   end
 
   def classifications
@@ -122,6 +119,28 @@ class LocationsController < ApplicationController
       else
         render json: { redirect_url: locations_path, message: 'No more locations to classify!' }
       end
+    else
+      render json: { error: 'Failed to update classification' }, status: :unprocessable_entity
+    end
+  end
+
+  def toggle_classification
+    @location = Location.find(params[:id])
+    
+    if @location.human_classification.nil?
+      render json: { error: 'Cannot toggle machine classifications' }, status: :unprocessable_entity
+      return
+    end
+
+    # Toggle the classification between 0 and 1
+    @location.human_classification = @location.human_classification == 1 ? 0 : 1
+    
+    if @location.save
+      render json: { 
+        success: true, 
+        new_classification: @location.human_classification,
+        message: 'Classification updated successfully'
+      }
     else
       render json: { error: 'Failed to update classification' }, status: :unprocessable_entity
     end

@@ -5,44 +5,60 @@
     <div class="flex gap-4">
       <%= link_to 'View Map', locations_path, 
           class: "text-blue-500 hover:text-blue-700 underline" %>
-      <%= link_to 'Gallery View', gallery_locations_path, 
-          class: "text-blue-500 hover:text-blue-700 underline" %>
     </div>
   </div>
 
   <%# Navigation Links %>
   <div class="mb-8 flex flex-wrap gap-4">
-    <%= link_to 'Human Positive', classifications_locations_path(classifier: 'human', result: 'positive'),
+    <%= link_to 'Human Positive', 
+        (params[:classifier] == 'human' && params[:result] == 'positive') ? classifications_locations_path : classifications_locations_path(classifier: 'human', result: 'positive'),
         class: "px-4 py-2 rounded #{params[:classifier] == 'human' && params[:result] == 'positive' ? 'bg-blue-500 text-white' : 'bg-gray-100 hover:bg-gray-200'}" %>
     
-    <%= link_to 'Human Negative', classifications_locations_path(classifier: 'human', result: 'negative'),
+    <%= link_to 'Human Negative', 
+        (params[:classifier] == 'human' && params[:result] == 'negative') ? classifications_locations_path : classifications_locations_path(classifier: 'human', result: 'negative'),
         class: "px-4 py-2 rounded #{params[:classifier] == 'human' && params[:result] == 'negative' ? 'bg-blue-500 text-white' : 'bg-gray-100 hover:bg-gray-200'}" %>
     
-    <%= link_to 'Machine Positive', classifications_locations_path(classifier: 'machine', result: 'positive'),
+    <%= link_to 'Machine Positive', 
+        (params[:classifier] == 'machine' && params[:result] == 'positive') ? classifications_locations_path : classifications_locations_path(classifier: 'machine', result: 'positive'),
         class: "px-4 py-2 rounded #{params[:classifier] == 'machine' && params[:result] == 'positive' ? 'bg-blue-500 text-white' : 'bg-gray-100 hover:bg-gray-200'}" %>
     
-    <%= link_to 'Machine Negative', classifications_locations_path(classifier: 'machine', result: 'negative'),
+    <%= link_to 'Machine Negative', 
+        (params[:classifier] == 'machine' && params[:result] == 'negative') ? classifications_locations_path : classifications_locations_path(classifier: 'machine', result: 'negative'),
         class: "px-4 py-2 rounded #{params[:classifier] == 'machine' && params[:result] == 'negative' ? 'bg-blue-500 text-white' : 'bg-gray-100 hover:bg-gray-200'}" %>
     
-    <%= link_to 'Conflicts', classifications_locations_path(status: 'conflict'),
+    <%= link_to 'Conflicts', 
+        params[:status] == 'conflict' ? classifications_locations_path : classifications_locations_path(status: 'conflict'),
         class: "px-4 py-2 rounded #{params[:status] == 'conflict' ? 'bg-blue-500 text-white' : 'bg-gray-100 hover:bg-gray-200'}" %>
   </div>
 
   <%# Results Grid %>
   <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
     <% @locations.each do |location| %>
-      <div class="relative">
+      <div class="relative group">
         <div class="aspect-w-1 aspect-h-1 w-full">
           <%= image_tag url_for(location.satellite_image),
               class: "w-full h-full object-cover rounded-lg border-4 #{classification_border_class(location)}",
               alt: "Satellite image for location #{location.id}" %>
-        </div>
-        <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white p-2 rounded-b-lg">
-          <div class="text-sm">
-            ID: <%= location.id %><br>
-            Human: <%= location.human_classification.nil? ? 'Unclassified' : (location.human_classification == 1 ? 'Positive' : 'Negative') %><br>
-            Machine: <%= location.machine_classification.nil? ? 'Unclassified' : (location.machine_classification == 1 ? 'Positive' : 'Negative') %><br>
-            Fetched: <%= time_ago_in_words(location.fetched_at) %> ago
+          
+          <% if location.human_classification.present? %>
+            <button onclick="toggleClassification(<%= location.id %>)" 
+                    class="absolute top-4 right-4 bg-white hover:bg-gray-100 text-gray-800 font-semibold py-2 px-4 rounded-lg shadow-md opacity-0 group-hover:opacity-100 flex items-center space-x-2 text-xs"
+                    style="transition: opacity 0.2s ease-in-out 1s;">
+              <svg style="width: 14px; height: 14px; transform: scale(0.9)" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+              </svg>
+              <span>Switch Classification</span>
+            </button>
+          <% end %>
+
+          <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white p-2 rounded-b-lg opacity-0 group-hover:opacity-100" 
+               style="transition: opacity 0.2s ease-in-out 1s;">
+            <div class="text-sm">
+              ID: <%= location.id %><br>
+              Human: <%= location.human_classification.nil? ? 'Unclassified' : (location.human_classification == 1 ? 'Positive' : 'Negative') %><br>
+              Machine: <%= location.machine_classification.nil? ? 'Unclassified' : (location.machine_classification == 1 ? 'Positive' : 'Negative') %><br>
+              Fetched: <%= time_ago_in_words(location.fetched_at) %> ago
+            </div>
           </div>
         </div>
       </div>
@@ -53,3 +69,33 @@
     <%= paginate @locations %>
   </div>
 </div> 
+
+<%= javascript_tag nonce: true do %>
+  function toggleClassification(id) {
+    fetch(`/locations/${id}/toggle_classification`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+      }
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (data.success) {
+        // Reload the page to show the updated classification
+        window.location.reload();
+      } else {
+        alert(data.error || 'Failed to toggle classification');
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Failed to toggle classification');
+    });
+  }
+<% end %> 

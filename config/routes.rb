@@ -19,5 +19,10 @@ Rails.application.routes.draw do
       get :bulk_upload
       post :process_bulk_upload
     end
+
+    member do
+      patch :classify
+      patch :toggle_classification
+    end
   end
 end

@@ -13,17 +13,29 @@
 <div class="container mx-auto px-4 py-8">
   <div class="flex justify-between items-center mb-6">
     <h1 class="text-2xl font-bold">Locations Map</h1>
-    <%= link_to 'Upload GeoJSON', new_geojson_import_path, 
-        class: "bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" %>
+    <div class="flex gap-4">
+      <%= link_to 'Classifications', classifications_locations_path,
+          class: "text-blue-500 hover:text-blue-700 underline" %>
+      <%= link_to 'Upload GeoJSON', new_geojson_import_path, 
+          class: "bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" %>
+    </div>
   </div>
 
   <div id="map"></div>
 </div>
 
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    // Initialize the map
-    var map = L.map('map').setView([37.7749, -122.4194], 13);
+  function initializeMap() {
+    // Check if map is already initialized
+    if (window.currentMap) {
+      window.currentMap.remove();
+    }
+
+    // Initialize the map without setting initial view
+    var map = L.map('map', {
+      minZoom: 2
+    });
+    window.currentMap = map;
 
     // Add the OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -31,11 +43,24 @@
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
+    // Set a default world view while loading
+    map.setView([0, 0], 2);
+
     // Fetch and display the GeoJSON data
     fetch('/locations.json')
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
       .then(data => {
-        L.geoJSON(data, {
+        if (!data || !data.features || data.features.length === 0) {
+          console.log('No locations found');
+          return;
+        }
+
+        const geoJsonLayer = L.geoJSON(data, {
           pointToLayer: function(feature, latlng) {
             return L.circleMarker(latlng, {
               radius: 8,
@@ -59,10 +84,28 @@
         }).addTo(map);
 
         // Fit the map to the bounds of all points
-        if (data.features.length > 0) {
-          var bounds = L.geoJSON(data).getBounds();
-          map.fitBounds(bounds);
-        }
+        const bounds = geoJsonLayer.getBounds();
+        map.fitBounds(bounds, {
+          padding: [50, 50],
+          maxZoom: 12
+        });
+      })
+      .catch(error => {
+        console.error('Error loading locations:', error);
       });
+  }
+
+  // Initialize on regular page load
+  document.addEventListener('DOMContentLoaded', initializeMap);
+  
+  // Initialize on Turbo navigation
+  document.addEventListener('turbo:load', initializeMap);
+  
+  // Clean up map when navigating away
+  document.addEventListener('turbo:before-render', function() {
+    if (window.currentMap) {
+      window.currentMap.remove();
+      window.currentMap = null;
+    }
   });
 </script> 
