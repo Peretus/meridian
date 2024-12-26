@@ -138,6 +138,33 @@ class Location < ApplicationRecord
       .distinct
   end
 
+  def classification_for_training
+    # Get the latest human classification
+    latest = classifications.where(classifier_type: 'human')
+                           .order(created_at: :desc)
+                           .first
+    
+    return nil unless latest
+    
+    if latest.is_result
+      'anchorage'
+    else
+      'not_anchorage'
+    end
+  end
+
+  def self.with_human_classifications
+    joins(:classifications)
+      .where(classifications: { classifier_type: 'human' })
+      .where("classifications.created_at = (
+        SELECT MAX(c2.created_at)
+        FROM classifications c2
+        WHERE c2.location_id = locations.id
+        AND c2.classifier_type = 'human'
+      )")
+      .distinct
+  end
+
   private
 
   def validate_coordinate_ranges
