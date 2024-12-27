@@ -202,6 +202,32 @@ class LocationsController < ApplicationController
     end
   end
 
+  def mark_as_anchorage
+    @location = Location.find(params[:id])
+    latest_machine = @location.classifications.by_machine.latest.first
+    
+    # Verify this is a machine-negative classification
+    unless latest_machine && !latest_machine.is_result
+      render json: { error: 'Location is not marked as machine-negative' }, status: :unprocessable_entity
+      return
+    end
+
+    # Create a new human-positive classification
+    new_classification = @location.classifications.create!(
+      classifier_type: 'human',
+      is_result: true
+    )
+    
+    if new_classification.persisted?
+      render json: { 
+        success: true, 
+        message: 'Location marked as anchorage successfully'
+      }
+    else
+      render json: { error: 'Failed to mark as anchorage' }, status: :unprocessable_entity
+    end
+  end
+
   def download_training_data
     require 'zip'
 

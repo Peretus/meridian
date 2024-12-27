@@ -79,6 +79,17 @@
             </button>
           <% end %>
 
+          <% if location.classifications.by_machine.latest.first&.is_result == false %>
+            <button onclick="markAsAnchorage(<%= location.id %>)" 
+                    class="absolute top-4 right-4 bg-white hover:bg-gray-100 text-gray-800 font-semibold py-2 px-4 rounded-lg shadow-md opacity-0 group-hover:opacity-100 flex items-center space-x-2 text-xs"
+                    style="transition: opacity 0.2s ease-in-out 1s;">
+              <svg style="width: 14px; height: 14px; transform: scale(0.9)" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+              </svg>
+              <span>Mark as Anchorage</span>
+            </button>
+          <% end %>
+
           <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white p-2 rounded-b-lg opacity-0 group-hover:opacity-100" 
                style="transition: opacity 0.2s ease-in-out 1s;">
             <div class="text-sm">
@@ -126,6 +137,34 @@
     .catch(error => {
       console.error('Error:', error);
       alert('Failed to toggle classification');
+    });
+  }
+
+  function markAsAnchorage(id) {
+    fetch(`/locations/${id}/mark_as_anchorage`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+      }
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (data.success) {
+        // Reload the page to show the updated classification
+        window.location.reload();
+      } else {
+        alert(data.error || 'Failed to mark as anchorage');
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Failed to mark as anchorage');
     });
   }
 <% end %> 

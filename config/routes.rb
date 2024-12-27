@@ -24,6 +24,7 @@ Rails.application.routes.draw do
     member do
       patch :classify
       patch :toggle_classification
+      patch :mark_as_anchorage
     end
   end
 end
