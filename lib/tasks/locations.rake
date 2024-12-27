@@ -19,7 +19,7 @@ namespace :locations do
       end
       
       # Small delay to avoid hitting rate limits
-      sleep 1
+      sleep 0.1
     end
     
     puts "\nDone! Successfully fetched images for #{locations.count} locations."
