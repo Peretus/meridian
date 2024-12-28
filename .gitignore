@@ -39,3 +39,14 @@
 
 # ML Service data directory
 /ml_service/data/
+node_modules
+
+# Node.js specific
+node_service/node_modules/
+node_service/.env
+node_service/npm-debug.log*
+node_service/yarn-debug.log*
+node_service/yarn-error.log*
+
+# Model files (should be added manually after training)
+node_service/model/
