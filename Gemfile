@@ -72,3 +72,6 @@ gem 'rubyzip'
 
 # For making HTTP requests to the ML service
 gem "httparty", "~> 0.21.0"
+
+# Image Processing
+gem 'mini_magick'

@@ -77,8 +77,8 @@ class Location < ApplicationRecord
       
       satellite_image.attach(
         io: StringIO.new(image_data),
-        filename: "satellite_#{id}.jpg",
-        content_type: "image/jpeg"
+        filename: "satellite_#{id}.png",
+        content_type: "image/png"
       )
 
       update(fetched_at: Time.current)

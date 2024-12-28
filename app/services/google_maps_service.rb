@@ -14,11 +14,11 @@ class GoogleMapsService
     @rate_limiter = RateLimiter.new(REQUESTS_PER_SECOND)
   end
 
-  def fetch_static_map(latitude:, longitude:, zoom: 16, size: "224x224")
+  def fetch_static_map(latitude:, longitude:, zoom: 16, size: "224x224", scale: 1)
     # Wait for rate limit before making request
     @rate_limiter.wait
     
-    uri = static_map_uri(latitude: latitude, longitude: longitude, zoom: zoom, size: size)
+    uri = static_map_uri(latitude: latitude, longitude: longitude, zoom: zoom, size: size, scale: scale)
     response = Net::HTTP.get_response(uri)
     
     if response.is_a?(Net::HTTPSuccess)
@@ -30,7 +30,7 @@ class GoogleMapsService
 
   private
 
-  def static_map_uri(latitude:, longitude:, zoom:, size:)
+  def static_map_uri(latitude:, longitude:, zoom:, size:, scale:)
     URI::HTTPS.build(
       host: "maps.googleapis.com",
       path: "/maps/api/staticmap",
@@ -38,7 +38,9 @@ class GoogleMapsService
         center: "#{latitude},#{longitude}",
         zoom: zoom,
         size: size,
+        scale: scale,
         maptype: "satellite",
+        format: "png",
         key: @api_key
       }.to_query
     )
