@@ -47,6 +47,11 @@ class LocationsController < ApplicationController
       )
     end
 
+    # Filter for offset points
+    if params[:type] == 'offset'
+      @locations = @locations.where("source LIKE 'offset_%'")
+    end
+
     # Add counts for training data export
     @positive_count = Location.joins(:classifications)
                             .where(classifications: { classifier_type: 'human', is_result: true })
@@ -231,18 +236,37 @@ class LocationsController < ApplicationController
   def download_training_data
     require 'zip'
 
+    # Get positive examples with images
     positive = Location.joins(:classifications)
+                      .joins(:satellite_image_attachment)  # Only include locations with images
                       .where(classifications: { classifier_type: 'human', is_result: true })
-                      .where.not(satellite_image_attachment: nil)
-    negative = Location.joins(:classifications)
-                      .where(classifications: { classifier_type: 'human', is_result: false })
-                      .where.not(satellite_image_attachment: nil)
+                      .where("classifications.created_at = (
+                        SELECT MAX(c2.created_at)
+                        FROM classifications c2
+                        WHERE c2.location_id = locations.id
+                        AND c2.classifier_type = 'human'
+                      )")
+                      .distinct
 
-    limit = [positive.count, negative.count].min
+    # Get negative examples with images
+    negative = Location.joins(:classifications)
+                      .joins(:satellite_image_attachment)  # Only include locations with images
+                      .where(classifications: { classifier_type: 'human', is_result: false })
+                      .where("classifications.created_at = (
+                        SELECT MAX(c2.created_at)
+                        FROM classifications c2
+                        WHERE c2.location_id = locations.id
+                        AND c2.classifier_type = 'human'
+                      )")
+                      .distinct
+
+    pos_count = positive.count
+    neg_count = negative.count
+    limit = [pos_count, neg_count].min
     
     if limit < 50
       redirect_to classifications_locations_path, 
-                  alert: 'Not enough classified examples available. Need at least 50 of each type.'
+                  alert: "Not enough classified examples with images available. Need at least 50 of each type. Currently have #{pos_count} positive and #{neg_count} negative examples with images."
       return
     end
 
@@ -281,13 +305,13 @@ class LocationsController < ApplicationController
     Zip::OutputStream.write_buffer do |zip|
       # Add positive examples
       positive_locations.each_with_index do |location, i|
-        zip.put_next_entry "training_data_#{date_str}/positive/#{i+1}.jpg"
+        zip.put_next_entry "training_data_#{date_str}/positive/#{i+1}.png"
         zip.write location.satellite_image.download
       end
       
       # Add negative examples
       negative_locations.each_with_index do |location, i|
-        zip.put_next_entry "training_data_#{date_str}/negative/#{i+1}.jpg"
+        zip.put_next_entry "training_data_#{date_str}/negative/#{i+1}.png"
         zip.write location.satellite_image.download
       end
     end.string

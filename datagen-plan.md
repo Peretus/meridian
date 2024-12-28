@@ -3,6 +3,20 @@
 ## Progress Log
 
 ### Current Step (2024-01-09)
+Implementing offset point generation and management:
+- Created rake tasks for generating and cleaning up offset points
+- Added database columns for tracking relationships:
+  - `notes` column in `locations` table for point metadata
+  - `notes` column in `classifications` table for inheritance tracking
+- Points are tracked in database via:
+  - `source` field starting with "offset_" (e.g., "offset_north_100m_from_123")
+  - `notes` field recording origin and parameters
+  - Inherited classifications marked with source anchorage ID
+- Cleanup is possible via `ml:remove_offset_points` task
+- Each original anchorage generates 4 offset points (N/S/E/W)
+- Offset distances are configurable (default 100m)
+
+### Previous Steps
 Testing image quality improvement with scale parameter:
 - Created test script to compare scale=1 vs scale=2 images
 - Used known, human-classified anchorages as test cases
@@ -11,6 +25,23 @@ Testing image quality improvement with scale parameter:
   - Confirmed significant quality improvement with scale=2 + downsampling
   - PNG format provides better quality than JPEG
   - Lanczos filter produces superior downsampling results
+
+### Next Step
+Re-fetching high-quality images:
+1. Remove old JPEG/low-res images
+2. Generate offset points at desired distances
+3. Fetch high-quality PNG images for all points
+4. Validate image quality and coverage
+
+### Next Step (2024-01-09)
+Re-fetching human-classified anchorage images:
+1. Create rake task to:
+   - Target only human-classified anchorages
+   - Fetch high-res PNG images with scale=2
+   - Apply Lanczos downsampling
+   - Replace existing images
+2. Monitor and validate quality improvements
+3. Track progress and handle errors gracefully
 
 ### Next Step
 Implementing high-quality image pipeline:
@@ -47,10 +78,20 @@ This plan outlines the approach to enhance our training dataset by generating hi
 ### Phase 1: Format Migration
 1. Update `GoogleMapsService` to use PNG format ✓
 2. Update `Location` model to store PNGs ✓
-3. Add high-quality downsampling pipeline
-4. Create migration task for existing images
+3. Add high-quality downsampling pipeline ✓
+4. Create migration task for existing images ✓
 
-### Phase 2: Image Management
+### Phase 2: Point Generation
+1. Create rake task for generating offset points ✓
+   - Configurable distance parameter
+   - Tracked via source field
+   - Inherited classifications
+2. Add cleanup capabilities ✓
+   - Remove offset points by source pattern
+   - Cascade delete for images and classifications
+3. Implement validation and monitoring
+
+### Phase 3: Image Management
 1. Track image metadata:
    - Original scale
    - Processing parameters (filter, quality)
@@ -58,12 +99,12 @@ This plan outlines the approach to enhance our training dataset by generating hi
 2. Store both original and processed versions
 3. Implement cleanup/pruning capabilities
 
-### Phase 3: Batch Processing
+### Phase 4: Batch Processing
 1. Create rake task for refetching existing images
 2. Add validation to ensure quality improvement
 3. Implement rate limiting and error handling
 
-### Phase 4: Integration
+### Phase 5: Integration
 1. Update training pipeline to use enhanced images
 2. Add filtering options for image quality
 3. Implement validation metrics

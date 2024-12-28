@@ -30,7 +30,7 @@ module Ml
         # Export satellite image if it exists
         if location.satellite_image.attached?
           # Create a unique filename
-          filename = "#{location.id}_satellite.jpg"
+          filename = "#{location.id}_satellite.png"
           target_path = class_dir.join(filename)
           
           # Download and save the image
