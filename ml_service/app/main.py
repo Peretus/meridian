@@ -25,12 +25,12 @@ labels = []
 def load_model():
     global model, labels
     try:
-        # Load the model directly using tf.keras
-        model = tf.keras.models.load_model("models/classifier/model.h5")
+        # Load the model with .keras extension
+        model = tf.keras.models.load_model("models/classifier/model.keras")
         
         # Load labels
         with open("models/classifier/labels.txt", "r") as f:
-            labels = [line.strip() for line in f.readlines()]
+            labels = [line.split()[1] for line in f.readlines()]
             
         print(f"Model loaded successfully. Labels: {labels}")
         return True
@@ -74,15 +74,22 @@ async def classify_image(file: UploadFile = File(...)):
         contents = await file.read()
         img_array = preprocess_image(contents)
         
-        # Make prediction
-        predictions = model.predict(img_array)
-        predicted_class_index = np.argmax(predictions[0])
-        confidence = float(predictions[0][predicted_class_index])
+        # Make prediction (categorical output)
+        predictions = model.predict(img_array)[0]
+        anchorage_prob = float(predictions[0])  # Probability of anchorage
+        
+        # Convert to class and probability
+        is_anchorage = anchorage_prob >= 0.5
+        confidence = anchorage_prob if is_anchorage else (1 - anchorage_prob)
+        predicted_class = "anchorage" if is_anchorage else "not_anchorage"
         
         return {
-            "class": labels[predicted_class_index],
-            "confidence": confidence,
-            "probabilities": {label: float(prob) for label, prob in zip(labels, predictions[0])}
+            "class": predicted_class,
+            "confidence": float(confidence),
+            "probabilities": {
+                "anchorage": float(anchorage_prob),
+                "not_anchorage": float(1 - anchorage_prob)
+            }
         }
     except Exception as e:
         return {"error": str(e)} 
