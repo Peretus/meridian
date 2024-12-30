@@ -167,34 +167,73 @@ class Location < ApplicationRecord
 
   # Class method to fetch satellite images in bulk
   def self.fetch_missing_satellite_images
-    scope = where(fetched_at: nil)
-      .or(where(satellite_image_attachment: nil))
-      .in_florida
+    scope = left_joins(:satellite_image_attachment)
+            .where(active_storage_attachments: { id: nil })
     
     total = scope.count
     return if total.zero?
     
-    puts "Found #{total} locations needing satellite images. Starting fetch..."
+    puts "\nFound #{total} locations needing satellite images"
+    puts "This will:"
+    puts "1. Fetch images at 448x448 (scale=2)"
+    puts "2. Store in PNG format"
+    puts "3. Apply Lanczos downsampling to 224x224"
+    puts "\nStarting fetch..."
     puts "Rate limited to #{GoogleMapsService::REQUESTS_PER_SECOND} requests per second"
     
     success = 0
     errors = 0
     
     scope.find_each.with_index do |location, index|
-      if location.fetch_satellite_image
+      print "\rProcessing #{index + 1}/#{total} (#{((index + 1).to_f / total * 100).round(1)}%)"
+      
+      begin
+        # Fetch high-res image
+        service = GoogleMapsService.new
+        image_data = service.fetch_static_map(
+          latitude: location.latitude,
+          longitude: location.longitude,
+          size: "224x224",
+          scale: 2
+        )
+        
+        # Process with high quality settings
+        image = MiniMagick::Image.read(image_data)
+        image.format 'png'
+        image.combine_options do |c|
+          c.resize "224x224"
+          c.filter "Lanczos"
+          c.quality "100"
+        end
+        
+        # Prepare processed image for attachment
+        processed_image = StringIO.new
+        processed_image.write(image.to_blob)
+        processed_image.rewind
+        
+        # Attach new image
+        location.satellite_image.attach(
+          io: processed_image,
+          filename: "satellite_#{location.id}.png",
+          content_type: "image/png"
+        )
+        
+        location.update(fetched_at: Time.current)
         success += 1
-      else
+        
+      rescue => e
         errors += 1
+        puts "\nError processing location #{location.id}: #{e.message}"
       end
       
-      # Print progress
-      progress = ((index + 1).to_f / total * 100).round(1)
-      print "\rProgress: #{progress}% (#{index + 1}/#{total} locations processed)"
+      # Add a small delay to respect rate limits
+      sleep(0.1)
     end
     
     puts "\n\nFetch complete!"
     puts "Successfully fetched: #{success}"
     puts "Errors: #{errors}"
+    puts "\nAll done! 🎉"
   end
 
   private
