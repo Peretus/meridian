@@ -279,6 +279,8 @@ class LocationsController < ApplicationController
 
   private
 
+  # This is used on the front-end where we parse coordinates from the 
+  # textarea locatd at /locations/bulk_upload
   def parse_coordinates(text)
     # First split by newlines to get each line
     lines = text.split(/\n+/).map(&:strip).reject(&:empty?)
@@ -301,6 +303,11 @@ class LocationsController < ApplicationController
     end.compact
   end
 
+
+  # Uses RubyZip to create a zip file with the training data.
+  # Honestly, this can be removed now that we aren't doing training locally anymore
+  # but we can keep it around around in case we end up re-implementing training 
+  # locally again. Uses RubyZip to create a zip file with the training data.
   def generate_training_zip(positive_locations, negative_locations, date_str)
     Zip::OutputStream.write_buffer do |zip|
       # Add positive examples
