@@ -121,12 +121,7 @@
               <% machine_class = location.classifications.by_machine.latest.first %>
               Human: <%= human_class ? (human_class.is_result ? 'Positive' : 'Negative') : 'Unclassified' %><br>
               Machine: <%= machine_class ? (machine_class.is_result ? 'Positive' : 'Negative') : 'Unclassified' %><br>
-              Fetched: <%= time_ago_in_words(location.fetched_at) %> ago<br>
-              <a href="https://maps.google.com/?q=<%= location.latitude %>,<%= location.longitude %>&ll=<%= location.latitude %>,<%= location.longitude %>&z=15" 
-                 target="_blank" 
-                 class="text-blue-300 hover:text-blue-100">
-                View on Google Maps
-              </a>
+              Fetched: <%= time_ago_in_words(location.fetched_at) %> ago
             </div>
           </div>
         </div>

@@ -42,11 +42,11 @@
 node_modules
 
 # Node.js specific
-node_service/node_modules/
-node_service/.env
-node_service/npm-debug.log*
-node_service/yarn-debug.log*
-node_service/yarn-error.log*
+image_classification_service/node_modules/
+image_classification_service/.env
+image_classification_service/npm-debug.log*
+image_classification_service/yarn-debug.log*
+image_classification_service/yarn-error.log*
 
 # Model files (should be added manually after training)
-node_service/model/
+image_classification_service/model/

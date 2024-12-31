@@ -1,5 +1,5 @@
 {
-  "name": "node_service",
+  "name": "image_classification_service",
   "version": "1.0.0",
   "description": "TensorFlow.js model server for image classification",
   "main": "server.js",

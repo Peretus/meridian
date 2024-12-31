@@ -64,14 +64,20 @@ gem 'activerecord-postgis-adapter', '~> 10.0'
 # Pagination
 gem 'kaminari'
 
-# Add the activerecord-import gem for efficient bulk imports
+# Add the activerecord-import gem for bulk imports that we use on the 'bulk uploads' view at locations/bulk_upload.
+# Ironically enough, this is mostly used for uploading just a few known locations at a time. More bulky uploads are
+# done via geojson files.
 gem 'activerecord-import'
 
-# For creating zip files
+# For creating zip files like we use in our training data export that we use for training teachable machine
 gem 'rubyzip'
 
-# For making HTTP requests to the ML service
+# For making HTTP requests to the ML service that runs on Node locally.
 gem "httparty", "~> 0.21.0"
 
-# Image Processing
+# Image Processing to resize our satellite images for the 224x224 input size that our ML model needs.
+# We capture the images at 2x res and then downsample them to 224x224 because we can get more detail.
 gem 'mini_magick'
+
+# For making HTTP requests to the ML service that runs on Node locally.
+gem "httparty", "~> 0.21.0"

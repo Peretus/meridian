@@ -282,21 +282,23 @@ class LocationsController < ApplicationController
   # This is used on the front-end where we parse coordinates from the 
   # textarea locatd at /locations/bulk_upload
   def parse_coordinates(text)
-    # First split by newlines to get each line
+    # First split by newlines to get each line and drop empty ones
     lines = text.split(/\n+/).map(&:strip).reject(&:empty?)
     
     lines.map do |line|
-      # Split each line by comma or space
+      # Split each line by comma or space and once again drop empty lines
       parts = line.split(/[,\s]+/).map(&:strip).reject(&:empty?)
+      # skip if we don't have exactly two parts (lat and lon) as it means
+      # something is borked on this line.
       next unless parts.length == 2
 
       lat, lon = parts
-      next unless lat && lon
 
       # Convert to float and validate
       lat_f = lat.to_f
       lon_f = lon.to_f
       
+      # Skip if the lat or lon is out of bounds of valid latlon
       next unless lat_f.between?(-90, 90) && lon_f.between?(-180, 180)
       
       [lat_f, lon_f]
@@ -316,7 +318,7 @@ class LocationsController < ApplicationController
         zip.write location.satellite_image.download
       end
       
-      # Add negative examples
+      # Add negative examples of training data
       negative_locations.each_with_index do |location, i|
         zip.put_next_entry "training_data_#{date_str}/negative/#{i+1}.png"
         zip.write location.satellite_image.download

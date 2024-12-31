@@ -21,7 +21,7 @@ namespace :ml do
 
     # Start the Node.js model server
     unless Ml::ClassifierService.start_server
-      puts "Failed to start model server. Please check the logs in log/node_service.log"
+      puts "Failed to start model server. Please check the logs in log/image_classification_service.log"
       exit 1
     end
     
@@ -53,7 +53,7 @@ namespace :ml do
     
     # Start the Node.js model server
     unless Ml::ClassifierService.start_server
-      puts "Failed to start model server. Please check the logs in log/node_service.log"
+      puts "Failed to start model server. Please check the logs in log/image_classification_service.log"
       exit 1
     end
     
@@ -588,7 +588,7 @@ namespace :ml do
     
     # Start the Node.js model server
     unless Ml::ClassifierService.start_server
-      puts "Failed to start model server. Please check the logs in log/node_service.log"
+      puts "Failed to start model server. Please check the logs in log/image_classification_service.log"
       exit 1
     end
     

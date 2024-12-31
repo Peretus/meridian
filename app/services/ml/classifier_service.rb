@@ -27,31 +27,42 @@ module Ml
         false
       end
 
-      def start_server
-        Rails.logger.info "Starting Node.js model server..."
-        node_service_path = Rails.root.join('node_service')
-        
-        # Check if server is already running
-        return true if ensure_server_running
-
+      def server_running?
         begin
-          # Start the server in the background
-          pid = spawn(
-            { 'NODE_ENV' => Rails.env },
-            'npm start',
-            chdir: node_service_path.to_s,
-            out: Rails.root.join('log/node_service.log').to_s,
-            err: Rails.root.join('log/node_service.error.log').to_s
-          )
-          Process.detach(pid)
-          
-          # Wait for server to be ready
-          sleep 2 # Initial wait for process to start
-          ensure_server_running
-        rescue => e
-          Rails.logger.error "Failed to start model server: #{e.message}"
-          false
+          response = HTTParty.get("#{MODEL_SERVER_URL}/health", timeout: 2)
+          return response.success?
+        rescue
+          return false
         end
+      end
+
+      def start_server
+        # Try to kill any existing process on port 3001
+        begin
+          existing_pid = `lsof -t -i:3001`.strip
+          Process.kill('TERM', existing_pid.to_i) if existing_pid.present?
+          sleep 1 # Give it a moment to shut down
+        rescue
+          # Ignore errors from kill command
+        end
+
+        return true if server_running?
+
+        image_classification_service_path = Rails.root.join('image_classification_service')
+        
+        @server_pid = spawn(
+          { 'NODE_ENV' => Rails.env },
+          'npm', 'start',
+          chdir: image_classification_service_path.to_s,
+          out: Rails.root.join('log/image_classification_service.log').to_s,
+          err: Rails.root.join('log/image_classification_service.error.log').to_s
+        )
+
+        Process.detach(@server_pid)
+
+        # Wait for server to be ready
+        sleep 2 # Initial wait for process to start
+        ensure_server_running
       end
 
       def classify_location(location)
