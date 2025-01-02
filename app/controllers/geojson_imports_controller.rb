@@ -12,7 +12,8 @@ class GeojsonImportsController < ApplicationController
     
     if @import.save
       begin
-        # Set up signal trap for Ctrl+C
+        # Set up signal trap for Ctrl+C so we can interrupt the import when we
+        # accidentally import a 200mb geojson file -___- 
         @interrupted = false
         Signal.trap('INT') do
           @interrupted = true
