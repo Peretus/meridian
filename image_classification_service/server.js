@@ -11,10 +11,10 @@ app.use(cors());
 
 let model = null;
 
-// Load the model
+// Load the model so we get an error earlier if it fails rather than predicting a bunch of points
+// that don't actually have a result and having to wait through it again. Ha.
 async function loadModel() {
     try {
-        // We'll need to update this path once we have the new model
         const modelPath = path.join(__dirname, 'model', 'model.json');
         const metadataPath = path.join(__dirname, 'model', 'metadata.json');
         
@@ -39,7 +39,7 @@ async function loadModel() {
     }
 }
 
-// Convert base64 to tensor
+// Convert base64 to tensor so we can run predictions
 async function base64ToTensor(base64String) {
     try {
         const buffer = Buffer.from(base64String, 'base64');
@@ -76,9 +76,10 @@ app.post('/predict', async (req, res) => {
             return res.status(400).json({ error: 'No image data provided' });
         }
         
+        // We get base64 images as we're storing in blobs so we need to convert these to work with our model
         const tensor = await base64ToTensor(imageData);
         
-        // Use tf.tidy for automatic memory cleanup
+        // Use the handy tf.tidy for automatic memory cleanup
         const result = tf.tidy(() => {
             const batched = tensor.expandDims(0);
             return model.predict(batched);
@@ -86,7 +87,7 @@ app.post('/predict', async (req, res) => {
         
         const probabilities = await result.data();
         
-        // Clean up
+        // Go ahead and do the clean up
         tf.dispose([tensor, result]);
         
         res.json({ predictions: Array.from(probabilities) });
@@ -99,7 +100,7 @@ app.post('/predict', async (req, res) => {
     }
 });
 
-// Health check endpoint
+// Health check endpoint that we can use in rails
 app.get('/health', (req, res) => {
     res.json({ 
         status: 'healthy',
@@ -108,7 +109,8 @@ app.get('/health', (req, res) => {
     });
 });
 
-// Test image processing endpoint
+// Again make sure that things are working before throwing thousands of classifications at it and 
+// wasting a bunch of time.
 app.post('/test-image', async (req, res) => {
     try {
         const imageData = req.body.image;
