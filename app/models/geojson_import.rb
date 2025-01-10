@@ -9,7 +9,8 @@ class GeojsonImport < ApplicationRecord
     max_lat: 49.384358    # Northernmost point
   }.freeze
 
-  # Constants for image capture and interpolation
+  # Constants for image capture and interpolation based on info from ESRI
+  # https://gis.stackexchange.com/questions/7430/what-ratio-scales-do-google-maps-zoom-levels-correspond-to
   METERS_PER_PIXEL_AT_ZOOM_16 = 2.4
   IMAGE_SIZE_PIXELS = 224
   OVERLAP_PERCENTAGE = 0.10
@@ -122,7 +123,8 @@ class GeojsonImport < ApplicationRecord
   end
 
   def interpolate_points(start_point, end_point, steps = nil)
-    # Constants for a 224x224 image at zoom level 16 with 10% overlap
+    
+    # Constants for a 224x224 image (which is what the model requires) at zoom level 16 with 10% overlap
     meters_between_points = IMAGE_SIZE_PIXELS * METERS_PER_PIXEL_AT_ZOOM_16 * (1 - OVERLAP_PERCENTAGE)
     
     # Convert points to meters, accounting for latitude in longitude conversion
