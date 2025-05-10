@@ -73,11 +73,11 @@ gem 'activerecord-import'
 gem 'rubyzip'
 
 # For making HTTP requests to the ML service that runs on Node locally.
-gem "httparty", "~> 0.21.0"
+gem "httparty", "~> 0.22.0"
 
 # Image Processing to resize our satellite images for the 224x224 input size that our ML model needs.
 # We capture the images at 2x res and then downsample them to 224x224 because we can get more detail.
 gem 'mini_magick'
 
 # For making HTTP requests to the ML service that runs on Node locally.
-gem "httparty", "~> 0.21.0"
+gem "httparty", "~> 0.22.0"
